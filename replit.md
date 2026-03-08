@@ -8,6 +8,13 @@ This is a comprehensive healthcare management system designed for care coordinat
 
 Preferred communication style: Simple, everyday language.
 
+## Local Preview
+
+- Development preview: `npm run dev` then open `http://localhost:5000`.
+- Production-like preview: `npm run preview` (builds + starts server on `http://localhost:5000`).
+- If port 5000 is in use, run with a custom port: `PORT=5173 npm run dev`.
+
+
 ## System Architecture
 
 ### Frontend Architecture
