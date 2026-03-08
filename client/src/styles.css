@@ -1,0 +1,173 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #10233f;
+  background: #eef4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero {
+  margin-bottom: 16px;
+}
+
+.hero h1 {
+  margin: 0;
+}
+
+.hero p {
+  margin-top: 8px;
+  color: #31486b;
+}
+
+.panel {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 16px;
+  box-shadow: 0 8px 24px rgba(10, 30, 60, 0.08);
+}
+
+.subPanel {
+  border: 1px solid #d7e2f2;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.inlineFields {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.inlineFields .wide {
+  min-width: 240px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #274061;
+}
+
+.checkboxLabel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+input,
+textarea {
+  border: 1px solid #c7d5ea;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  background: #1d4ed8;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button.secondary {
+  background: #f1f5ff;
+  color: #173a85;
+  border: 1px solid #b9caf0;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.error {
+  color: #bb1c1c;
+  margin: 0;
+}
+
+pre {
+  margin-top: 10px;
+  padding: 10px;
+  background: #0f1c2e;
+  color: #dce8ff;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+.decisionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.decisionGrid p {
+  margin: 4px 0 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid #d7e2f2;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+th {
+  background: #edf4ff;
+}
+
+@media (max-width: 860px) {
+  .inlineFields {
+    grid-template-columns: 1fr;
+  }
+}
