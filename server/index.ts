@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { evaluateRequestSchema } from "@shared/schema";
 import { evaluatePriorAuthorization } from "./decisionEngine";
+import { generatePrDraftFromJiraIssue, getJiraIssue } from "./integrations.jiraIbmBob";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,44 @@ app.post("/api/evaluate", (req, res) => {
 
   const result = evaluatePriorAuthorization(parsed.data);
   return res.json(result);
+});
+
+app.get("/api/jira/issue/:issueKey", async (req, res) => {
+  try {
+    const issue = await getJiraIssue(req.params.issueKey);
+    return res.json(issue);
+  } catch (error) {
+    return res.status(400).json({
+      message: error instanceof Error ? error.message : "Failed to fetch Jira issue",
+    });
+  }
+});
+
+app.post("/api/jira/generate-pr-draft", async (req, res) => {
+  const body = req.body as {
+    issueKey?: string;
+    repositoryContext?: string;
+    implementationNotes?: string;
+  };
+
+  if (!body.issueKey || !body.repositoryContext) {
+    return res.status(400).json({
+      message: "issueKey and repositoryContext are required",
+    });
+  }
+
+  try {
+    const output = await generatePrDraftFromJiraIssue({
+      issueKey: body.issueKey,
+      repositoryContext: body.repositoryContext,
+      implementationNotes: body.implementationNotes,
+    });
+    return res.json(output);
+  } catch (error) {
+    return res.status(400).json({
+      message: error instanceof Error ? error.message : "Failed to generate PR draft",
+    });
+  }
 });
 
 const port = Number(process.env.PORT ?? 5000);
