@@ -1,10 +1,13 @@
-# Jira + IBM bob MCP server
+# Jira + IBM bob MCP server and UI tester
 
-This MCP server exposes Jira tools and an IBM bob summarization workflow over stdio.
+This repo now includes:
+
+1. an MCP stdio server for Jira + IBM bob
+2. a browser UI to test Jira issue intake and generate code + PR drafts
 
 ## 1) Environment variables
 
-Set the following variables before launching:
+Set the following variables before launching MCP server or UI API endpoints:
 
 - `JIRA_BASE_URL` (example: `https://your-company.atlassian.net`)
 - `JIRA_EMAIL` (Jira account email)
@@ -16,17 +19,41 @@ Set the following variables before launching:
 ## 2) Run
 
 ```bash
+npm run dev
+```
+
+Open the app and use the Jira → Code + PR Draft Tester panel.
+
+To run only the MCP server:
+
+```bash
 npm run mcp:jira-ibm-bob
 ```
 
-## 3) Available MCP tools
+## 3) MCP tools
 
 - `jira_list_projects`
 - `jira_search_issues`
 - `jira_get_issue`
 - `jira_summarize_with_ibm_bob`
+- `jira_generate_pr_draft_with_ibm_bob`
 
-## 4) Example MCP client config
+## 4) HTTP API endpoints used by UI
+
+- `GET /api/jira/issue/:issueKey`
+- `POST /api/jira/generate-pr-draft`
+
+`POST /api/jira/generate-pr-draft` request body:
+
+```json
+{
+  "issueKey": "ABC-123",
+  "repositoryContext": "Tech stack + constraints",
+  "implementationNotes": "Optional notes"
+}
+```
+
+## 5) Example MCP client config
 
 ```json
 {
@@ -47,4 +74,4 @@ npm run mcp:jira-ibm-bob
 }
 ```
 
-If your IBM bob endpoint is not OpenAI-compatible (`/v1/chat/completions`), adapt `callIbmBob` in `server/mcp/jiraIbmBobServer.ts` to the correct API contract.
+If your IBM bob endpoint is not OpenAI-compatible (`/v1/chat/completions`), adapt `callIbmBob` in `server/integrations.jiraIbmBob.ts`.

@@ -1,133 +1,180 @@
-import { useMemo, useState } from "react";
-import type { EvaluateResponse } from "@shared/schema";
+import { useState } from "react";
 
-const defaultRequest = {
-  request: {
-    memberId: "123456",
-    patientName: "John Doe",
-    diagnosisCodes: ["F84.0"],
-    procedureCodes: ["97151"],
-    serviceRequested: "ABA Therapy",
-  },
-  policy: {
-    policyName: "ABA Therapy Coverage",
-    policyVersion: "2026.03",
-    criteria: [
-      { id: "C1", description: "Confirmed diagnosis of Autism Spectrum Disorder", required: true, evidenceHints: ["autism", "asd", "f84.0"] },
-      { id: "C2", description: "Treatment plan documented by provider", required: true, evidenceHints: ["treatment plan", "provider note"] },
-      { id: "C3", description: "Less intensive therapies attempted before ABA request", required: true, evidenceHints: ["speech therapy", "occupational therapy", "previous treatments"] },
-    ],
-  },
-  clinicalFacts: [
-    { label: "Diagnosis", value: "Autism Spectrum Disorder confirmed in psychological evaluation.", sourceDocument: "psych_eval.pdf" },
-    { label: "Plan", value: "Treatment plan documented by Dr. Smith for 20 hours/week ABA.", sourceDocument: "provider_note.pdf" },
-  ],
+type JiraIssue = {
+  key: string;
+  fields?: {
+    summary?: string;
+    status?: { name?: string };
+    priority?: { name?: string };
+    assignee?: { displayName?: string };
+    reporter?: { displayName?: string };
+    updated?: string;
+  };
 };
 
+type DraftResponse = {
+  issue: JiraIssue;
+  draft: {
+    issueKey: string;
+    branchName: string;
+    summary: string;
+    implementationPlan: string[];
+    proposedCode: string;
+    testPlan: string[];
+    prTitle: string;
+    prBody: string;
+  };
+};
+
+const defaultRepoContext = `Tech stack:\n- Node.js + TypeScript\n- React frontend\n- Express backend\n\nCoding constraints:\n- Keep changes minimal and focused\n- Add tests/checks where possible\n- Follow existing file structure and naming conventions`;
+
 export function App() {
-  const [payloadText, setPayloadText] = useState(JSON.stringify(defaultRequest, null, 2));
-  const [result, setResult] = useState<EvaluateResponse | null>(null);
+  const [issueKey, setIssueKey] = useState("");
+  const [repositoryContext, setRepositoryContext] = useState(defaultRepoContext);
+  const [implementationNotes, setImplementationNotes] = useState("");
+
+  const [issue, setIssue] = useState<JiraIssue | null>(null);
+  const [draft, setDraft] = useState<DraftResponse["draft"] | null>(null);
+  const [loadingIssue, setLoadingIssue] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const recommendation = useMemo(() => {
-    if (!result) {
-      return "";
-    }
-    if (result.confidenceScore >= 90) {
-      return "Auto decision recommended";
-    }
-    if (result.confidenceScore >= 70) {
-      return "Review recommended";
-    }
-    return "Manual review required";
-  }, [result]);
-
-  const evaluate = async () => {
+  const fetchIssue = async () => {
     try {
-      setLoading(true);
+      setLoadingIssue(true);
       setError(null);
-      const parsed = JSON.parse(payloadText);
-      const response = await fetch("/api/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed),
-      });
+      setDraft(null);
+
+      const response = await fetch(`/api/jira/issue/${encodeURIComponent(issueKey.trim())}`);
+      const body = await response.json();
 
       if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.message ?? "Failed to evaluate request");
+        throw new Error(body.message ?? "Failed to fetch Jira issue");
       }
 
-      const body = (await response.json()) as EvaluateResponse;
-      setResult(body);
+      setIssue(body as JiraIssue);
     } catch (requestError) {
-      setResult(null);
+      setIssue(null);
       setError(requestError instanceof Error ? requestError.message : "Unexpected error");
     } finally {
-      setLoading(false);
+      setLoadingIssue(false);
+    }
+  };
+
+  const generateDraft = async () => {
+    try {
+      setLoadingDraft(true);
+      setError(null);
+
+      const response = await fetch("/api/jira/generate-pr-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issueKey: issueKey.trim(),
+          repositoryContext,
+          implementationNotes: implementationNotes.trim() || undefined,
+        }),
+      });
+
+      const body = (await response.json()) as DraftResponse | { message?: string };
+      if (!response.ok || !("draft" in body)) {
+        throw new Error("message" in body ? body.message ?? "Failed to generate draft" : "Failed to generate draft");
+      }
+
+      setIssue(body.issue);
+      setDraft(body.draft);
+    } catch (requestError) {
+      setDraft(null);
+      setError(requestError instanceof Error ? requestError.message : "Unexpected error");
+    } finally {
+      setLoadingDraft(false);
     }
   };
 
   return (
     <main className="container">
-      <h1>AI-Powered Prior Authorization Decision System</h1>
-      <p className="subtitle">Paste or edit the request/policy/facts payload, then run the decision engine.</p>
+      <h1>Jira → Code + PR Draft Tester (IBM bob)</h1>
+      <p className="subtitle">
+        Enter a Jira issue key, pull issue details, and generate an implementation/code/PR draft using your IBM bob-backed MCP integration.
+      </p>
 
       <section className="panel">
-        <h2>Input Payload</h2>
-        <textarea value={payloadText} onChange={(e) => setPayloadText(e.target.value)} rows={20} spellCheck={false} />
-        <button onClick={evaluate} disabled={loading}>{loading ? "Evaluating..." : "Evaluate Prior Auth"}</button>
-        {error ? <p className="error">{error}</p> : null}
+        <h2>1) Jira issue</h2>
+        <label htmlFor="issueKey">Issue key</label>
+        <input id="issueKey" value={issueKey} onChange={(event) => setIssueKey(event.target.value)} placeholder="ABC-123" />
+        <div className="buttonRow">
+          <button onClick={fetchIssue} disabled={loadingIssue || !issueKey.trim()}>
+            {loadingIssue ? "Loading issue..." : "Fetch Jira issue"}
+          </button>
+        </div>
       </section>
 
-      {result ? (
+      <section className="panel">
+        <h2>2) Repository context + notes</h2>
+        <label htmlFor="repoContext">Repository context (passed to IBM bob)</label>
+        <textarea id="repoContext" rows={10} value={repositoryContext} onChange={(event) => setRepositoryContext(event.target.value)} />
+
+        <label htmlFor="implementationNotes">Additional implementation notes (optional)</label>
+        <textarea
+          id="implementationNotes"
+          rows={5}
+          value={implementationNotes}
+          onChange={(event) => setImplementationNotes(event.target.value)}
+          placeholder="Any constraints, architecture rules, or acceptance criteria"
+        />
+
+        <div className="buttonRow">
+          <button onClick={generateDraft} disabled={loadingDraft || !issueKey.trim() || !repositoryContext.trim()}>
+            {loadingDraft ? "Generating draft..." : "Generate code + PR draft"}
+          </button>
+        </div>
+      </section>
+
+      {error ? <p className="error">{error}</p> : null}
+
+      {issue ? (
         <section className="panel">
-          <h2>Decision Output</h2>
+          <h2>Jira issue snapshot</h2>
           <div className="grid">
-            <div><strong>Decision:</strong> {result.decision}</div>
-            <div><strong>Confidence:</strong> {result.confidenceScore}% ({recommendation})</div>
-            <div><strong>Policy:</strong> {result.policyName} v{result.policyVersion}</div>
-            <div><strong>Audit Timestamp:</strong> {new Date(result.auditTrail.timestamp).toLocaleString()}</div>
+            <div><strong>Key:</strong> {issue.key}</div>
+            <div><strong>Summary:</strong> {issue.fields?.summary ?? "-"}</div>
+            <div><strong>Status:</strong> {issue.fields?.status?.name ?? "-"}</div>
+            <div><strong>Priority:</strong> {issue.fields?.priority?.name ?? "-"}</div>
+            <div><strong>Assignee:</strong> {issue.fields?.assignee?.displayName ?? "-"}</div>
+            <div><strong>Reporter:</strong> {issue.fields?.reporter?.displayName ?? "-"}</div>
+            <div><strong>Updated:</strong> {issue.fields?.updated ? new Date(issue.fields.updated).toLocaleString() : "-"}</div>
           </div>
-          <p><strong>Explanation:</strong> {result.explanation}</p>
+        </section>
+      ) : null}
 
-          <h3>Criteria Evaluation</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Criterion</th>
-                <th>Status</th>
-                <th>Evidence Mapping</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.criteriaEvaluation.map((criterion) => (
-                <tr key={criterion.criterionId}>
-                  <td>{criterion.criterionId}</td>
-                  <td>{criterion.description}</td>
-                  <td>{criterion.status}</td>
-                  <td>
-                    {criterion.matchedEvidence.length > 0
-                      ? criterion.matchedEvidence.map((fact) => `${fact.sourceDocument}: ${fact.label}`).join("; ")
-                      : "No supporting evidence"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {draft ? (
+        <section className="panel">
+          <h2>Generated implementation + PR draft</h2>
+          <p><strong>Branch name:</strong> <code>{draft.branchName}</code></p>
+          <p><strong>Summary:</strong> {draft.summary}</p>
 
-          {result.missingCriteria.length > 0 ? (
-            <>
-              <h3>Missing Criteria</h3>
-              <ul>
-                {result.missingCriteria.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+          <h3>Implementation plan</h3>
+          <ul>
+            {draft.implementationPlan.map((step, index) => (
+              <li key={`${step}-${index}`}>{step}</li>
+            ))}
+          </ul>
+
+          <h3>Proposed code</h3>
+          <pre>{draft.proposedCode}</pre>
+
+          <h3>Suggested test plan</h3>
+          <ul>
+            {draft.testPlan.map((step, index) => (
+              <li key={`${step}-${index}`}>{step}</li>
+            ))}
+          </ul>
+
+          <h3>PR title</h3>
+          <pre>{draft.prTitle}</pre>
+
+          <h3>PR body</h3>
+          <pre>{draft.prBody}</pre>
         </section>
       ) : null}
     </main>
